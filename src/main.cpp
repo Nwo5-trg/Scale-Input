@@ -586,10 +586,17 @@ class $modify (ScaleControl, GJScaleControl) {
         }
     }   
 
-    void sliderChanged(CCObject* sender) {
-        GJScaleControl::sliderChanged(sender);
+    void ccTouchMoved(CCTouch* touch, CCEvent* event) {
+        GJScaleControl::ccTouchMoved(touch, event);
         if (Mod::get()->getSettingValue<bool>("scale-input-enabled")) {
-            this->updateInputValues(true, false, 0, 0, static_cast<CCNode*>(sender)->getParent()->getParent());
+            Slider* slider = nullptr;
+            switch (m_scaleButtonType) {
+                case 0: slider = m_sliderX; break;
+                case 1: slider = m_sliderY; break;
+                case 2: slider = m_sliderXY; break;
+                default: return;
+            }
+            this->updateInputValues(true, false, 0, 0, slider);
         }
     }
     
