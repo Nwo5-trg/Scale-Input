@@ -25,6 +25,7 @@ class $modify (ScaleControl, GJScaleControl) {
         CCMenu* xShortcutsMenu;
         CCMenu* yShortcutsMenu;
         float shortcutAlignment;
+        float lastChangedValueXY = 0.0f;
         float lastChangedValueX = 0.0f;
         float lastChangedValueY = 0.0f;
 
@@ -259,12 +260,20 @@ class $modify (ScaleControl, GJScaleControl) {
 
     void ccTouchMoved(CCTouch* p0, CCEvent* p1) {
         GJScaleControl::ccTouchMoved(p0, p1);
+        auto& lastChangedValueXY = m_fields->lastChangedValueXY;
         auto& lastChangedValueX = m_fields->lastChangedValueX;
-        auto& lastChangedValueY= m_fields->lastChangedValueY;
-        if (lastChangedValueX != m_changedValueX && lastChangedValueY != m_changedValueY) updateInputValues(m_changedValueX, m_changedValueY, 0);
-        else updateInputValues(m_changedValueX, m_changedValueY, lastChangedValueX != m_changedValueX ? 2 : 1);
-        lastChangedValueX = m_changedValueX;
-        lastChangedValueY = m_changedValueY;
+        auto& lastChangedValueY = m_fields->lastChangedValueY;
+        auto sliderXYValue = m_sliderXY->getValue();
+        auto sliderXValue = m_sliderX->getValue();
+        auto sliderYValue = m_sliderY->getValue();
+
+        if (sliderXYValue != lastChangedValueXY) updateInputValues(m_changedValueX, m_changedValueY, 0);
+        if (sliderXValue != lastChangedValueX) updateInputValues(m_changedValueX, m_changedValueY, 1);
+        if (sliderYValue != lastChangedValueY) updateInputValues(m_changedValueX, m_changedValueY, 2);
+        
+        lastChangedValueXY = m_sliderXY->getValue();
+        lastChangedValueX = m_sliderX->getValue();
+        lastChangedValueY = m_sliderY->getValue();
     }
 
     void loadValues(GameObject* obj, CCArray* objs, gd::unordered_map<int, GameObjectEditorState>& states) {

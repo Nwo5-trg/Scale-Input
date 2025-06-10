@@ -1,3 +1,6 @@
+## v2.0.1
+- **Fixed** inputs not updating correctly
+
 ## v2.0.0
 - **Added** rewrite of most the mod lol
 - **Added** custom rounding
