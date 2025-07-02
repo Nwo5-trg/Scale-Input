@@ -8,7 +8,7 @@
 	},
 	"id": "nwo5.scaleinput",
 	"name": "Scale Input+",
-	"version": "v2.0.1",
+	"version": "v2.1.0",
 	"developer": "Nwo5",
 	"description": "Scale input and shortcuts.",
 	"tags": ["editor", "utility", "enhancement", "offline"],
@@ -22,6 +22,11 @@
 			"type": "bool",
 			"name": "Enable Scale Input",
 			"default": true
+		},
+		"scale-hack": {
+			"type": "bool",
+			"name": "Enable Scale Hack",
+			"default": false
 		},
 		"scale-max-characters": {
 			"type": "int",

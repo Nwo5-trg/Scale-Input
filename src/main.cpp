@@ -3,16 +3,6 @@
 
 using namespace geode::prelude;
 
-std::string ftofstr(float num, int decimal) {
-    if (decimal == 0) return std::to_string((int)round(num));
-    std::ostringstream ss;
-    ss << std::fixed << std::setprecision(decimal) << num;
-    std::string string = ss.str();
-    string.erase(string.find_last_not_of('0') + 1, std::string::npos);
-    if (string.back() == '.') string.pop_back();
-    return string;
-}
-
 class $modify (ScaleControl, GJScaleControl) {
     struct Fields {
         CCLabelBMFont* customScaleDefaultLabel;
@@ -31,6 +21,7 @@ class $modify (ScaleControl, GJScaleControl) {
 
         // settings
         bool scaleInputEnabled = Mod::get()->getSettingValue<bool>("scale-input-enabled");
+        bool scaleHack = Mod::get()->getSettingValue<bool>("scale-hack");
         int64_t maxCharacters = Mod::get()->getSettingValue<int64_t>("scale-max-characters");
         int64_t scaleRounding = Mod::get()->getSettingValue<int64_t>("scale-rounding");
         bool shortcutsEnabled = Mod::get()->getSettingValue<bool>("scale-shortcuts-enabled");
@@ -230,25 +221,83 @@ class $modify (ScaleControl, GJScaleControl) {
     }
 
     void customScale(float scale, int type) {
-        auto editorUI = EditorUI::get();
-        if (scale == 0) scale = 1;
-        if (type == 0) {
-            auto currentScale = std::max(m_valueX, m_valueY);
-            if (currentScale == 0) currentScale = 1;
-            editorUI->scaleXYChanged(scale * (m_valueX / currentScale), scale * (m_valueY / currentScale), m_scaleLocked);
-            m_sliderXY->setValue(valueFromScale(scale));
-            m_valueX = scale * (m_valueX / currentScale);
-            m_valueY = scale * (m_valueY / currentScale);
-        }
-        if (type == 1) {
-            editorUI->scaleXChanged(scale, m_scaleLocked);
-            m_sliderX->setValue(valueFromScale(scale));
-            m_valueX = scale;
-        }
-        if (type == 2) {
-            editorUI->scaleYChanged(scale, m_scaleLocked);
-            m_sliderY->setValue(valueFromScale(scale));
-            m_valueY = scale;
+        auto editor = EditorUI::get();
+        if (!m_fields->scaleHack) {
+            if (scale == 0) scale = 1;
+            switch (type) {
+                case 0: {
+                    auto currentScale = std::max(m_valueX, m_valueY);
+                    if (currentScale == 0) currentScale = 1;
+                    editor->scaleXYChanged(scale * (m_valueX / currentScale), scale * (m_valueY / currentScale), m_scaleLocked);
+                    m_sliderXY->setValue(valueFromScale(scale));
+                    m_valueX = scale * (m_valueX / currentScale);
+                    m_valueY = scale * (m_valueY / currentScale);
+                    break;
+                }
+                case 1: {
+                    editor->scaleXChanged(scale, m_scaleLocked);
+                    m_sliderX->setValue(valueFromScale(scale));
+                    m_valueX = scale;
+                    break;
+                }
+                case 2: {
+                    editor->scaleYChanged(scale, m_scaleLocked);
+                    m_sliderY->setValue(valueFromScale(scale));
+                    m_valueY = scale;
+                    break;
+                }
+            }
+        } else {
+            auto objsArray = editor->getSelectedObjects();
+            auto center = editor->getGroupCenter(objsArray, true);
+            auto objs = ccArrayToVector<GameObject*>(objsArray);
+
+            float scaleX = FLT_MIN;
+            float scaleY = FLT_MIN;
+            for (auto obj : objs) {
+                float objScaleX = obj->getScaleX();
+                float objScaleY = obj->getScaleY();
+                if (objScaleX > scaleX) scaleX = objScaleX;
+                if (objScaleY > scaleY) scaleY = objScaleY;
+            }
+
+            float scaleMultiplier = 0.0f;
+            switch (type) {
+                case 0: scaleMultiplier = scale / std::max(scaleX, scaleY); break; 
+                case 1: scaleMultiplier = scale / scaleX; break; 
+                case 2: scaleMultiplier = scale / scaleY; break; 
+            }
+
+            for (auto obj : objs) {
+                auto pos = obj->getPosition();
+                auto offset = pos - center;
+
+                switch (type) {
+                    case 0: { // x+y
+                        if (!m_scaleLocked) obj->setPosition(center + offset * scaleMultiplier);
+                        obj->setScaleX(obj->m_scaleX * scaleMultiplier * (obj->m_isFlipX ? -1 : 1));
+                        obj->m_scaleX *= scaleMultiplier;
+                        obj->setScaleY(obj->m_scaleY * scaleMultiplier * (obj->m_isFlipY ? -1 : 1));
+                        obj->m_scaleY *= scaleMultiplier;
+                        break;
+                    }
+                    case 1: { // x
+                        if (!m_scaleLocked) obj->setPosition(ccp(center.x + offset.x * scaleMultiplier, pos.y));
+                        obj->setScaleX(obj->m_scaleX * scaleMultiplier * (obj->m_isFlipX ? -1 : 1));
+                        obj->m_scaleX *= scaleMultiplier;
+                        break;
+                    }
+                    case 2: { // y
+                        if (!m_scaleLocked) obj->setPosition(ccp(pos.x, center.y + offset.y * scaleMultiplier));
+                        obj->setScaleY(obj->m_scaleY * scaleMultiplier * (obj->m_isFlipY ? -1 : 1));
+                        obj->m_scaleY *= scaleMultiplier;
+                        break;
+                    }
+                }
+            }
+            editor->updateButtons();
+            editor->updateDeleteButtons();
+            editor->updateObjectInfoLabel();
         }
     }
    
@@ -278,11 +327,15 @@ class $modify (ScaleControl, GJScaleControl) {
 
     void loadValues(GameObject* obj, CCArray* objs, gd::unordered_map<int, GameObjectEditorState>& states) {
         GJScaleControl::loadValues(obj, objs, states);
-        if (m_fields->scaleInputEnabled) {
-            this->updateInputValues(m_valueX, m_valueY, 3);
-        }
-        if (m_fields->scaleInputEnabled || m_fields->shortcutsEnabled) {
-            this->updateVisibility();
-        }
+        if (m_fields->scaleInputEnabled) this->updateInputValues(m_valueX, m_valueY, 3);
+        if (m_fields->scaleInputEnabled || m_fields->shortcutsEnabled) this->updateVisibility();
+    }
+
+    std::string ftofstr(float num, int rounding) {
+        auto str = numToString(num, rounding);
+        auto end = str.find_last_not_of('0');
+        if (end != std::string::npos) str.erase(end + 1);
+        if (!str.empty() && str.back() == '.') str.pop_back();
+        return str;
     }
 };

@@ -1,3 +1,6 @@
+## v2.1.0
+- **Added** scale hack >:3
+
 ## v2.0.1
 - **Fixed** inputs not updating correctly
 
