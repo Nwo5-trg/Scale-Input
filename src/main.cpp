@@ -222,8 +222,8 @@ class $modify (ScaleControl, GJScaleControl) {
 
     void customScale(float scale, int type) {
         auto editor = EditorUI::get();
+        if (scale == 0) scale = 1;
         if (!m_fields->scaleHack) {
-            if (scale == 0) scale = 1;
             switch (type) {
                 case 0: {
                     auto currentScale = std::max(m_valueX, m_valueY);
