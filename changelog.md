@@ -1,5 +1,6 @@
 ## v2.1.0
 - **Added** scale hack >:3
+- **Added** a lil bit of code organization but not rly cuz this mods a cluserf**k and i dont feel like rewriting from scratch
 
 ## v2.0.1
 - **Fixed** inputs not updating correctly
